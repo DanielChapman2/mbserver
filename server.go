@@ -2,6 +2,7 @@
 package mbserver
 
 import (
+	"fmt"
 	"io"
 	"net"
 
@@ -20,6 +21,7 @@ type Server struct {
 	Coils            []byte
 	HoldingRegisters []uint16
 	InputRegisters   []uint16
+	IsQuietMode      bool
 }
 
 // Request contains the connection and Modbus frame.
@@ -47,7 +49,7 @@ func NewServer() *Server {
 	s.function[6] = WriteHoldingRegister
 	s.function[15] = WriteMultipleCoils
 	s.function[16] = WriteHoldingRegisters
-
+	s.IsQuietMode = true
 	s.requestChan = make(chan *Request)
 	go s.handler()
 
@@ -58,7 +60,14 @@ func NewServer() *Server {
 func (s *Server) RegisterFunctionHandler(funcCode uint8, function func(*Server, Framer) ([]byte, *Exception)) {
 	s.function[funcCode] = function
 }
+func (s *Server) vLog(format string, a ...interface{}) (n int, err error) {
 
+	if !s.IsQuietMode {
+		line := fmt.Sprintf(format, a...)
+		fmt.Println(line)
+	}
+	return 0, nil
+}
 func (s *Server) handle(request *Request) Framer {
 	var exception *Exception
 	var data []byte
@@ -67,6 +76,7 @@ func (s *Server) handle(request *Request) Framer {
 
 	function := request.frame.GetFunction()
 	if s.function[function] != nil {
+		s.vLog("Modbus req func: %d data: %v", request.frame.GetFunction(), request.frame.GetData())
 		data, exception = s.function[function](s, request.frame)
 		response.SetData(data)
 	} else {

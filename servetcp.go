@@ -1,6 +1,7 @@
 package mbserver
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -20,6 +21,9 @@ func (s *Server) accept(listen net.Listener) error {
 
 		go func(conn net.Conn) {
 			defer conn.Close()
+			defer fmt.Printf("Client Closed: %s\n", conn.RemoteAddr())
+
+			fmt.Printf("Client Connected: %s\n", conn.RemoteAddr())
 
 			for {
 				packet := make([]byte, 512)
